@@ -1,12 +1,18 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
-// #include <Adafruit_LSM303_U.h>
 #include <Adafruit_LSM303_Accel.h>
 #include <SPI.h>
 #include <LoRa.h>
 #include <SoftwareSerial.h>
-#include <SD.h>
+// #include <SD.h>
 #include <stdlib.h>
+#include "SdFat.h"
+#include "FreeStack.h"
+
+#include <STM32FreeRTOS.h>
+#include <semphr.h>
+
+// SemaphoreHandle_t xSerialSemaphore;
 
 #define SS PA15
 #define RST PB7
@@ -14,10 +20,26 @@
 #define BAND 433E6
 #define LORA_PCTR PB14
 SoftwareSerial mySerial(PA5, PA8);
+SdFat SD;
 File myFile;
 
 /* Assign a unique ID to this sensor at the same time */
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
+
+SdFat sd1;
+const uint8_t SD1_CS = PA7;
+
+const uint8_t BUF_DIM = 2048;
+uint8_t buf[BUF_DIM];
+
+const uint32_t FILE_SIZE = 1000000;
+const uint16_t NWRITE = FILE_SIZE / BUF_DIM;
+
+#define errorExit(msg) errorHalt(F(msg))
+#define initError(msg) initErrorHalt(F(msg))
+
+// void TaskSensorRead( void *pvParameters );
+// void TaskSdWrite( void *pvParameters );
 
 void displaySensorDetails(void) {
   sensor_t sensor;
@@ -44,6 +66,14 @@ void displaySensorDetails(void) {
 }
 
 void setup(void) {
+
+  // if (xSerialSemaphore == NULL)  // Check to confirm that the Serial Semaphore has not already been created.
+  // {
+  //   xSerialSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
+  //   if ((xSerialSemaphore) != NULL)
+  //     xSemaphoreGive((xSerialSemaphore));  // Make the Serial Port available for use, by "Giving" the Semaphore.
+  // }
+
 #ifndef ESP8266
   while (!Serial)
     ;  // will pause Zero, Leonardo, etc until serial console opens
@@ -65,6 +95,29 @@ void setup(void) {
   }
 
   mySerial.println("Initializing SD card...");
+  if (!sd1.begin(SD1_CS, SD_SCK_MHZ(18))) {
+    sd1.initError("sd1:");
+  }
+  if (!sd1.exists("/Dir1")) {
+    if (!sd1.mkdir("/Dir1")) {
+      sd1.errorExit("sd1.mkdir");
+    }
+  }
+
+  mySerial.println(F("------sd1 root-------"));
+  sd1.ls();
+
+  if (!sd1.chdir("/Dir1")) {
+    sd1.errorExit("sd1.chdir");
+  }
+
+  mySerial.println(F("------sd1 Dir1-------"));
+  sd1.ls();
+  sd1.chvol();
+  SdFile file1;
+  if (!file1.open("test.bin", O_RDWR | O_CREAT | O_TRUNC)) {
+    sd1.errorExit("file1");
+  }
 
   if (SD.begin(PA7)) {
     delay(10);
@@ -73,10 +126,10 @@ void setup(void) {
   } else {
     mySerial.println("SD initialize failed !!!");
   }
-  
+
   displaySensorDetails();
 
-// ------------------------------------------------ Display sensor config ------------------------------------------------ //
+  // ------------------------------------------------ Display sensor config ------------------------------------------------ //
 
   accel.setRange(LSM303_RANGE_4G);
   mySerial.print("Range set to: ");
@@ -109,45 +162,99 @@ void setup(void) {
     case LSM303_MODE_HIGH_RESOLUTION:
       mySerial.println("High Resolution");
       break;
-// ------------------------------------------------ Display sensor config ------------------------------------------------ //
+      // ------------------------------------------------ Display sensor config ------------------------------------------------ //
   }
-  mySerial.println("Read 16384 sample !!!");
 
-  String Test_Sensor_Data = "";
+  // xTaskCreate(
+  //   TaskSensorRead
+  //   ,  "SensorRead"  // A name just for humans
+  //   ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+  //   ,  NULL //Parameters for the task
+  //   ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+  //   ,  NULL ); //Task Handle
+
+  // xTaskCreate(
+  //   TaskSdWrite
+  //   ,  "SdWrite" // A name just for humans
+  //   ,  128  // Stack size
+  //   ,  NULL //Parameters for the task
+  //   ,  1  // Priority
+  //   ,  NULL ); //Task Handle
+
+  mySerial.println("Read 2048 sample !!!");
+  uint8_t Test_Sensor_Data[2048];
   int counter = 0;
-  /* Get a new sensor event */
   sensors_event_t event;
   // ----------------------------------------------------- Sensor Test ----------------------------------------------------- //
-  mySerial.println("Whole read and save process cost: ");
-  unsigned long start_read = micros();
-  while (counter < 16384) {
+  mySerial.println("Start read: ");
+  while (counter < 2048) {
     accel.getEvent(&event);
-    unsigned long start = micros();
-    Test_Sensor_Data += (unsigned char)accel.raw.xhigh;
-    Test_Sensor_Data += (unsigned char)accel.raw.yhigh;
-    Test_Sensor_Data += (unsigned char)accel.raw.zhigh;
-    Test_Sensor_Data += (unsigned char)accel.raw.xlow;
-    Test_Sensor_Data += (unsigned char)accel.raw.ylow;
-    Test_Sensor_Data += (unsigned char)accel.raw.zlow;
-    mySerial.println(micros()-start);
+    buf[counter] == accel.raw.xhigh;
+    buf[counter + 1] == accel.raw.yhigh;
+    buf[counter + 2] == accel.raw.zhigh;
+    buf[counter + 3] == accel.raw.xlow;
+    buf[counter + 4] == accel.raw.ylow;
+    buf[counter + 5] == accel.raw.zlow;
     counter += 6;
   }
-  mySerial.println(micros() - start_read);
   mySerial.println("Done read");
 
-  mySerial.println("Total Record process cost: ");
-  unsigned long start_record = micros();
-  myFile = SD.open("test18.txt", FILE_WRITE);
-  if (myFile) {
-    myFile.write(&Test_Sensor_Data[0], Test_Sensor_Data.length());
-    myFile.close();
+  mySerial.println(F("Writing test.bin to sd1"));
+
+  for (uint16_t i = 0; i < NWRITE; i++) {
+    if (file1.write(buf, sizeof(buf)) != sizeof(buf)) {
+      sd1.errorExit("sd1.write");
+    }
   }
-  mySerial.println(micros() - start_record);
-  mySerial.println("End Record");
-  mySerial.println("Done recording");
+
+  file1.close();
+
+  myFile = SD.open("test19.txt", FILE_WRITE);
+  if (myFile) {
+    myFile.write(&buf[0], 2048);
+    myFile.close();
+    mySerial.println("done write.");
+  } else {
+    mySerial.println("error opening test.txt");
+  }
 }
 
 void loop(void) {
-// Nothing here
-
+  // mySerial.println("here");
 }
+
+// void TaskSensorRead( void *pvParameters __attribute__((unused)) ){
+//   uint8_t buffer[2048];
+//   int counter = 0;
+//   sensors_event_t event;
+//   // mySerial.println("Start read: ");
+//   while (counter < 2048) {
+//     if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 5 ) == pdTRUE ){
+//       accel.getEvent(&event);
+//       buffer[counter] == accel.raw.xhigh;
+//       buffer[counter + 1] == accel.raw.yhigh;
+//       buffer[counter + 2] == accel.raw.zhigh;
+//       buffer[counter + 3] == accel.raw.xlow;
+//       buffer[counter + 4] == accel.raw.ylow;
+//       buffer[counter + 5] == accel.raw.zlow;
+//       counter += 6;
+//       xSemaphoreGive( xSerialSemaphore );
+//     }
+//     vTaskDelay(1);
+//   }
+//   // mySerial.println("Done read");
+// }
+// void TaskSdWrite( void *pvParameters __attribute__((unused)) ){
+//   if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 5 ) == pdTRUE ){
+//     myFile = SD.open("test.txt", FILE_WRITE);
+//     if (myFile) {
+//     myFile.write(&buf[0], 2048);
+//     myFile.close();
+//     mySerial.println("done write.");
+//     } else {
+//       mySerial.println("error opening test.txt");
+//     }
+//     xSemaphoreGive( xSerialSemaphore );
+//   }
+//   vTaskDelay(1);
+// }
