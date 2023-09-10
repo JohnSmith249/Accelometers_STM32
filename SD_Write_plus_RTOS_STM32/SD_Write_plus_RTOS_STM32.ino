@@ -7,10 +7,10 @@
 // #include <SD.h>
 #include <stdlib.h>
 #include "SdFat.h"
-#include "FreeStack.h"
+// #include "FreeStack.h"
 
-#include <STM32FreeRTOS.h>
-#include <semphr.h>
+// #include <STM32FreeRTOS.h>
+// #include <semphr.h>
 
 // SemaphoreHandle_t xSerialSemaphore;
 
@@ -19,24 +19,28 @@
 #define DI0 PB6
 #define BAND 433E6
 #define LORA_PCTR PB14
+
+#define FILE_BASE_NAME "Data"
+
 SoftwareSerial mySerial(PA5, PA8);
 SdFat SD;
+SdFile file;
 File myFile;
 
 /* Assign a unique ID to this sensor at the same time */
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
 
-SdFat sd1;
-const uint8_t SD1_CS = PA7;
+// SdFat sd1;
+// const uint8_t SD1_CS = PA7;
 
-const uint8_t BUF_DIM = 2048;
-uint8_t buf[BUF_DIM];
+// const uint8_t BUF_DIM = 2048;
+// uint8_t buf[BUF_DIM];
 
 const uint32_t FILE_SIZE = 1000000;
-const uint16_t NWRITE = FILE_SIZE / BUF_DIM;
+// const uint16_t NWRITE = FILE_SIZE / BUF_DIM;
 
-#define errorExit(msg) errorHalt(F(msg))
-#define initError(msg) initErrorHalt(F(msg))
+// #define errorExit(msg) errorHalt(F(msg))
+// #define initError(msg) initErrorHalt(F(msg))
 
 // void TaskSensorRead( void *pvParameters );
 // void TaskSdWrite( void *pvParameters );
@@ -95,30 +99,30 @@ void setup(void) {
   }
 
   mySerial.println("Initializing SD card...");
-  if (!sd1.begin(SD1_CS, SD_SCK_MHZ(18))) {
-    sd1.initError("sd1:");
-  }
-  if (!sd1.exists("/Dir1")) {
-    if (!sd1.mkdir("/Dir1")) {
-      sd1.errorExit("sd1.mkdir");
-    }
-  }
+  // if (!sd1.begin(SD1_CS, SD_SCK_MHZ(18))) {
+  //   sd1.initError("sd1:");
+  // }
+  // if (!sd1.exists("/Dir1")) {
+  //   if (!sd1.mkdir("/Dir1")) {
+  //     sd1.errorExit("sd1.mkdir");
+  //   }
+  // }
 
-  mySerial.println(F("------sd1 root-------"));
-  sd1.ls();
+  // mySerial.println(F("------sd1 root-------"));
+  // sd1.ls();
 
-  if (!sd1.chdir("/Dir1")) {
-    sd1.errorExit("sd1.chdir");
-  }
+  // if (!sd1.chdir("/Dir1")) {
+  //   sd1.errorExit("sd1.chdir");
+  // }
 
-  mySerial.println(F("------sd1 Dir1-------"));
-  sd1.ls();
-  sd1.chvol();
-  SdFile file1;
-  if (!file1.open("test.bin", O_RDWR | O_CREAT | O_TRUNC)) {
-    sd1.errorExit("file1");
-  }
-
+  // mySerial.println(F("------sd1 Dir1-------"));
+  // sd1.ls();
+  // sd1.chvol();
+  // SdFile file1;
+  // if (!file1.open("test.bin", O_RDWR | O_CREAT | O_TRUNC)) {
+  //   sd1.errorExit("file1");
+  // }
+  // char fileName[] = FILE_BASE_NAME "00.csv";
   if (SD.begin(PA7)) {
     delay(10);
     mySerial.println("SD detected !!!");
@@ -182,42 +186,55 @@ void setup(void) {
   //   ,  NULL ); //Task Handle
 
   mySerial.println("Read 2048 sample !!!");
-  uint8_t Test_Sensor_Data[2048];
+  unsigned char buf[2048];
+  unsigned char data[2048];
   int counter = 0;
   sensors_event_t event;
   // ----------------------------------------------------- Sensor Test ----------------------------------------------------- //
   mySerial.println("Start read: ");
-  while (counter < 2048) {
+  // unsigned long Full_read_start = micros();
+  
+  while (counter < 7) {
     accel.getEvent(&event);
-    buf[counter] == accel.raw.xhigh;
-    buf[counter + 1] == accel.raw.yhigh;
-    buf[counter + 2] == accel.raw.zhigh;
-    buf[counter + 3] == accel.raw.xlow;
-    buf[counter + 4] == accel.raw.ylow;
-    buf[counter + 5] == accel.raw.zlow;
-    counter += 6;
+    // data[counter] == (unsigned char)accel.raw.xhigh;
+    // data[counter + 1] == (unsigned char)accel.raw.yhigh;
+    // data[counter + 2] == (unsigned char)accel.raw.zhigh;
+    // data[counter + 3] == (unsigned char)accel.raw.xlow;
+    // data[counter + 4] == (unsigned char)accel.raw.ylow;
+    // data[counter + 5] == (unsigned char)accel.raw.zlow;
+    unsigned long Full_read_start = micros();
+    data[counter] == (char)accel.raw.x;
+    data[counter + 1] == (char)accel.raw.y;
+    data[counter + 2] == (char)accel.raw.z;
+    mySerial.println(micros() - Full_read_start);
+    counter += 3;
   }
   mySerial.println("Done read");
 
-  mySerial.println(F("Writing test.bin to sd1"));
+  // mySerial.println(F("Writing test.bin to sd1"));
 
-  for (uint16_t i = 0; i < NWRITE; i++) {
-    if (file1.write(buf, sizeof(buf)) != sizeof(buf)) {
-      sd1.errorExit("sd1.write");
-    }
-  }
+  // for (uint16_t i = 0; i < NWRITE; i++) {
+  //   if (file1.write(buf, sizeof(buf)) != sizeof(buf)) {
+  //     sd1.errorExit("sd1.write");
+  //   }
+  // }
 
-  file1.close();
+  // file1.close();
 
-  myFile = SD.open("test19.txt", FILE_WRITE);
+  myFile = SD.open("test22.txt", FILE_WRITE);
   if (myFile) {
-    myFile.write(&buf[0], 2048);
+    mySerial.println("begin write");
+    // myFile.write(&buf[0], 2048);
+    for (int i = 0; i < 2048; i++) {
+      myFile.print(data[i]);
+    }
     myFile.close();
     mySerial.println("done write.");
   } else {
-    mySerial.println("error opening test.txt");
+    mySerial.println("error opening txt");
   }
 }
+
 
 void loop(void) {
   // mySerial.println("here");
