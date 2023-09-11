@@ -20,15 +20,16 @@
 #define BAND 433E6
 #define LORA_PCTR PB14
 
-#define FILE_BASE_NAME "Data"
+// #define FILE_BASE_NAME "Data"
 
 SoftwareSerial mySerial(PA5, PA8);
-sensors_event_t event;
 SdFat SD;
 SdFile file;
 File myFile;
 
 char Global_Data[2046];
+String File_name = "TEST23.txt";
+// int Test_subject = 1;
 /* Assign a unique ID to this sensor at the same time */
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
 
@@ -38,7 +39,7 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
 // const uint8_t BUF_DIM = 2048;
 // uint8_t buf[BUF_DIM];
 
-const uint32_t FILE_SIZE = 1000000;
+// const uint32_t FILE_SIZE = 1000000;
 // const uint16_t NWRITE = FILE_SIZE / BUF_DIM;
 
 // #define errorExit(msg) errorHalt(F(msg))
@@ -71,12 +72,32 @@ void displaySensorDetails(void) {
   delay(500);
 }
 
+// void change_subject(void){
+//   Test_subject += 1;
+// }
+
 void Read_data(void){
+  sensors_event_t event;
   accel.getEvent(&event);
   for (int i=0; i<2046; i+=3){
     Global_Data[i] == accel.raw.x;
     Global_Data[i+1] == accel.raw.y;
     Global_Data[i+2] == accel.raw.z;
+  }
+}
+
+void Log_data(void){
+  myFile = SD.open(File_name, FILE_WRITE);
+  if (myFile) {
+    mySerial.println("begin write");
+    // myFile.write(&buf[0], 2048);
+    for (int i = 0; i < 2048; i++) {
+      myFile.print(Global_Data[i]);
+    }
+    myFile.close();
+    mySerial.println("done write.");
+  } else {
+    mySerial.println("error opening txt");
   }
 }
 
@@ -100,6 +121,20 @@ void setup(void) {
   pinMode(SS, OUTPUT);
   digitalWrite(SS, HIGH);
   mySerial.begin(4800);
+  delay(10000);
+  mySerial.listen();
+  // mySerial.println("Begin test");
+  // mySerial.print("original value: ");
+  // mySerial.println(Test_subject);
+  // mySerial.print("modified value: ");
+  // change_subject();
+  // mySerial.println(Test_subject);
+  // if ( xSerialSemaphore == NULL )  // Check to confirm that the Serial Semaphore has not already been created.
+  // {
+  //   xSerialSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
+  //   if ( ( xSerialSemaphore ) != NULL )
+  //     xSemaphoreGive( ( xSerialSemaphore ) );  // Make the Serial Port available for use, by "Giving" the Semaphore.
+  // }
   mySerial.println("Accelerometer Test");
 
   if (!accel.begin()) {
@@ -200,34 +235,16 @@ void setup(void) {
   unsigned char buf[2048];
   unsigned char data[2048];
   int counter = 0;
+  sensors_event_t event;
   // sensors_event_t event;
   // ----------------------------------------------------- Sensor Test ----------------------------------------------------- //
   mySerial.println("Start read: ");
-  // unsigned long Full_read_start = micros();
-  while (counter < 2046) {
-    accel.getEvent(&event);
-    unsigned long Full_read_start = micros();
-    // mySerial.println(micros() - Full_read_start);
-    // data[counter] == (unsigned char)accel.raw.xhigh;
-    // data[counter + 1] == (unsigned char)accel.raw.yhigh;
-    // data[counter + 2] == (unsigned char)accel.raw.zhigh;
-    // data[counter + 3] == (unsigned char)accel.raw.xlow;
-    // data[counter + 4] == (unsigned char)accel.raw.ylow;
-    // data[counter + 5] == (unsigned char)accel.raw.zlow;
-    // unsigned long Full_read_start = micros();
-    data[counter] == (char)accel.raw.x;
-    data[counter + 1] == (char)accel.raw.y;
-    data[counter + 2] == (char)accel.raw.z;
-    // mySerial.println("*********************");
-    // mySerial.println(accel.raw.x);
-    // mySerial.println(accel.raw.y);
-    // mySerial.println(accel.raw.z);
-    // mySerial.println("*********************");
-    mySerial.println(micros() - Full_read_start);
-    counter += 3;
-  }
+  Read_data();
   mySerial.println("Done read");
 
+  mySerial.println("Start record");
+  Log_data();
+  mySerial.println("Done record");  
   // mySerial.println(F("Writing test.bin to sd1"));
 
   // for (uint16_t i = 0; i < NWRITE; i++) {
@@ -238,18 +255,18 @@ void setup(void) {
 
   // file1.close();
 
-  myFile = SD.open("test22.txt", FILE_WRITE);
-  if (myFile) {
-    mySerial.println("begin write");
-    // myFile.write(&buf[0], 2048);
-    for (int i = 0; i < 2048; i++) {
-      myFile.print(data[i]);
-    }
-    myFile.close();
-    mySerial.println("done write.");
-  } else {
-    mySerial.println("error opening txt");
-  }
+  // myFile = SD.open("test22.txt", FILE_WRITE);
+  // if (myFile) {
+  //   mySerial.println("begin write");
+  //   // myFile.write(&buf[0], 2048);
+  //   for (int i = 0; i < 2048; i++) {
+  //     myFile.print(data[i]);
+  //   }
+  //   myFile.close();
+  //   mySerial.println("done write.");
+  // } else {
+  //   mySerial.println("error opening txt");
+  // }
 }
 
 
