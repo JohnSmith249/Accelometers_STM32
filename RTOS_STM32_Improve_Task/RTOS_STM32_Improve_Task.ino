@@ -212,8 +212,8 @@ void setup(void) {
     case LSM303_MODE_HIGH_RESOLUTION:
       mySerial.println("High Resolution");
       break;
-      // ------------------------------------------------ Display sensor config ------------------------------------------------ //
   }
+      // ------------------------------------------------ Display sensor config ------------------------------------------------ //
 
   // xTaskCreate(
   //   TaskSensorRead
