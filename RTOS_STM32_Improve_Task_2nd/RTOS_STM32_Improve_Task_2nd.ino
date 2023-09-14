@@ -20,9 +20,9 @@ File myFile;
 SdFile file;
 SdFat SD;
 
-int16_t Global_Data_x[200];
-int16_t Global_Data_y[200];
-int16_t Global_Data_z[200];
+char Global_Data_x[200];
+char Global_Data_y[200];
+char Global_Data_z[200];
 char test_subject[10];
 
 String File_name = "TEST25.txt";
@@ -87,15 +87,14 @@ void displaySensorDetails(void) {
 
 void Read_data(void) {
   sensors_event_t event;
-  // accel.begin();
   accel.SetDataRate();
   for (int i = 0; i < 200; i++) {
     unsigned long start = micros();
-    accel.readRawData();
+    accel.getEvent(&event);
     mySerial.println(micros() - start);
-    // Global_Data_x[i] == accel.raw.x;
-    // Global_Data_y[i] == accel.raw.y;
-    // Global_Data_z[i] == accel.raw.z;
+    Global_Data_x[i] == accel.raw.x;
+    Global_Data_y[i] == accel.raw.y;
+    Global_Data_z[i] == accel.raw.z;
     // mySerial.print(accel.raw.x);
     // mySerial.print(accel.raw.y);
     // mySerial.println(accel.raw.z);
@@ -106,12 +105,15 @@ void Log_data(void) {
   myFile = SD.open(File_name, FILE_WRITE);
   if (myFile) {
     mySerial.println("begin write");
-    myFile.println("************************************");
-    for (int i = 0; i < 200; i++) {
-      myFile.print(Global_Data_x[i]);
-      myFile.print(Global_Data_y[i]);
-      myFile.println(Global_Data_z[i]);
-    }
+    // myFile.println("************************************");
+    // for (int i = 0; i < 200; i++) {
+    //   myFile.print(Global_Data_x[i]);
+    //   myFile.print(Global_Data_y[i]);
+    //   myFile.println(Global_Data_z[i]);
+    // }
+    myFile.write(&Global_Data_x[0], 200);
+    myFile.write(&Global_Data_y[0], 200);
+    myFile.write(&Global_Data_z[0], 200);
     myFile.close();
     mySerial.println("done write.");
   } else {
@@ -126,9 +128,6 @@ void Check_data(void) {
     mySerial.println(Global_Data_z[i]);
   }
 }
-// TaskHandle_t Task_Handle1;
-// TaskHandle_t Task_Handle2;
-
 
 void Sensor_Test(void) {
   mySerial.println("Accelerometer Test !!!");
@@ -164,27 +163,15 @@ void setup() {
   pinMode(DRDY, INPUT);
   mySerial.begin(4800);
   delay(1000);
-
-  // xTaskCreate(Read_data,
-  //             "Task1",
-  //             100,
-  //             NULL,
-  //             1,
-  //             &Task_Handle1);
-
-  // xTaskCreate(Log_data,
-  //             "Task2",
-  //             100,
-  //             NULL,
-  //             2,
-  //             &Task_Handle2);
+  
 
   Sensor_Test();
-  // displaySensorDetails();
-  // SD_Test();
+  displaySensorDetails();
+  SD_Test();
 
   mySerial.println("-----------------------------------------");
   Read_data();
+  Check_data();
   // delay(100);
   // Log_data();
   // Test_array();
@@ -192,37 +179,5 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  // Empty
 }
-
-// void Read_data(void *parameter) {
-//   (void)parameter;
-//   while (1) {
-//     sensors_event_t event;
-//     for (int i = 0; i < 200; i++) {
-//       accel.getEvent(&event);
-//       Global_Data_x[i] == (char)accel.raw.x;
-//       Global_Data_y[i] == (char)accel.raw.y;
-//       Global_Data_z[i] == (char)accel.raw.z;
-//     }
-//   }
-// }
-
-// void Log_data(void *parameter) {
-//   (void)parameter;
-//   while (1) {
-//     myFile = SD.open(File_name, FILE_WRITE);
-//     if (myFile) {
-//       mySerial.println("begin write");
-//       for (int i = 0; i < 200; i++) {
-//         myFile.print(Global_Data_x[i]);
-//         myFile.print(Global_Data_y[i]);
-//         myFile.print(Global_Data_z[i]);
-//       }
-//       myFile.close();
-//       mySerial.println("done write.");
-//     } else {
-//       mySerial.println("error opening txt");
-//     }
-//   }
-// }
