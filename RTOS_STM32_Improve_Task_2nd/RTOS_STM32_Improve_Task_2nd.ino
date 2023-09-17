@@ -1,5 +1,5 @@
 #include <Adafruit_Sensor.h>
-// #include <Adafruit_LSM303_Accel.h>
+#include <Adafruit_LSM303_Accel.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <LoRa.h>
@@ -15,8 +15,8 @@
 #define BAND 433E6
 #define LORA_PCTR PB14
 #define DRDY PA5
-byte ACC_ADDRESS = 0x19;  //0011001
 
+byte ACC_ADDRESS = 0x19;  //0011001
 byte ACC_CTRL_REG1_A = 0x20;
 byte ACC_CTRL_REG4_A = 0x23;
 byte ACC_OUT_X_L_A = 0x28;
@@ -31,12 +31,14 @@ File myFile;
 SdFile file;
 SdFat SD;
 
-uint8_t Global_Data_xhi[10];
-unsigned char Global_Data_xlo[200];
-unsigned char Global_Data_yhi[200];
-unsigned char Global_Data_ylo[200];
-unsigned char Global_Data_zhi[200];
-unsigned char Global_Data_zlo[200];
+const int Buffer_Size = 10;
+
+uint8_t Global_Data_xhi[Buffer_Size];
+uint8_t Global_Data_xlo[Buffer_Size];
+uint8_t Global_Data_yhi[Buffer_Size];
+uint8_t Global_Data_ylo[Buffer_Size];
+uint8_t Global_Data_zhi[Buffer_Size];
+uint8_t Global_Data_zlo[Buffer_Size];
 char test_subject[10];
 
 String File_name = "TEST26.txt";
@@ -126,27 +128,30 @@ void Read_data(void) {
 }
 
 void I2C_Read(void) {
-  for (int i; i < 10; i++) {
-    Wire.beginTransmission(ACC_ADDRESS);
-    Wire.write(ACC_OUT_X_L_A | 0x80);
-    Wire.endTransmission();
-    Wire.requestFrom((byte)ACC_ADDRESS, (byte)6);
-    while (Wire.available() < 6)
-      ;
-    uint8_t xla = Wire.read();
-    uint8_t xha = Wire.read();
-    uint8_t yla = Wire.read();
-    uint8_t yha = Wire.read();
-    uint8_t zla = Wire.read();
-    uint8_t zha = Wire.read();
-    mySerial.println(xla);
-    mySerial.println(xha);
-    mySerial.println(yla);
-    mySerial.println(yha);
-    mySerial.println(zla);
-    mySerial.println(zha);
-    mySerial.println("***********************");
-  }
+  Wire.beginTransmission(ACC_ADDRESS);
+  Wire.write(ACC_OUT_X_L_A | 0x80);
+  // Wire.write(ACC_OUT_X_H_A | 0x80);
+  // Wire.write(ACC_OUT_Y_L_A | 0x80);
+  // Wire.write(ACC_OUT_Y_H_A | 0x80);
+  // Wire.write(ACC_OUT_Z_L_A | 0x80);
+  // Wire.write(ACC_OUT_Z_H_A | 0x80);
+  Wire.endTransmission();
+  Wire.requestFrom((byte)ACC_ADDRESS, (byte)6);
+  while (Wire.available() < 6)
+    ;
+  uint8_t xla = Wire.read();
+  uint8_t xha = Wire.read();
+  uint8_t yla = Wire.read();
+  uint8_t yha = Wire.read();
+  uint8_t zla = Wire.read();
+  uint8_t zha = Wire.read();
+  mySerial.println(xla);
+  mySerial.println(xha);
+  mySerial.println(yla);
+  mySerial.println(yha);
+  mySerial.println(zla);
+  mySerial.println(zha);
+  mySerial.println("***********************");
 }
 
 void Log_data(void) {
@@ -221,7 +226,7 @@ void setup() {
   pinMode(LORA_PCTR, OUTPUT);
   pinMode(SS, OUTPUT);
   digitalWrite(SS, HIGH);
-  // pinMode(DRDY, INPUT);
+
   mySerial.begin(4800);
   delay(1000);
   Wire.begin();
